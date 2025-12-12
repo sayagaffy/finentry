@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fintrack-db
+    restart: always
+    environment:
+      POSTGRES_USER: fintrack_user
+      POSTGRES_PASSWORD: fintrack_password
+      POSTGRES_DB: fintrack_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

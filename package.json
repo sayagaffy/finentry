@@ -1,5 +1,5 @@
 {
-  "name": "fintrack",
+  "name": "finentry",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,18 +9,46 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@neondatabase/serverless": "^1.0.2",
+    "@prisma/adapter-neon": "^7.1.0",
+    "@prisma/adapter-pg": "^7.1.0",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@swc/helpers": "^0.5.17",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.0.0",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "lightningcss": "^1.30.2",
+    "lightningcss-win32-x64-msvc": "^1.30.2",
+    "lucide-react": "^0.559.0",
     "next": "16.0.8",
+    "next-auth": "^5.0.0-beta.30",
+    "openai": "^6.10.0",
+    "pg": "^8.16.3",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.0",
+    "ws": "^8.18.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@prisma/client": "^7.1.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.8",
+    "prisma": "^7.1.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

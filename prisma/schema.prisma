@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// AUTH & TENANCY MODELS
+// ============================================
+
+model Company {
+  id               String   @id @default(cuid())
+  name             String
+  subscriptionPlan String   @default("basic") // basic, pro, enterprise
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users           User[]
+  customers       Customer[]
+  vendors         Vendor[]
+  items           Item[]
+  transactions    Transaction[]
+  chartOfAccounts ChartOfAccount[]
+  vehicles        Vehicle[]
+  aiconfig        AIConfig?
+
+  @@map("companies")
+}
+
+model User {
+  id       String @id @default(cuid())
+  name     String
+  email    String @unique
+  password String // Hashed
+  role     String // "OWNER" (Super Admin) or "ADMIN" (Company Admin)
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ============================================
+// MASTER DATA MODELS
+// ============================================
+
+model Customer {
+  id           String        @id @default(cuid())
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id])
+  name         String
+  contact      String?
+  address      String?
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([companyId])
+  @@index([name])
+  @@map("customers")
+}
+
+model Vendor {
+  id           String        @id @default(cuid())
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id])
+  name         String
+  type         String // "vendor" or "transporter"
+  contact      String?
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([companyId])
+  @@index([name])
+  @@index([type])
+  @@map("vendors")
+}
+
+model Item {
+  id           String        @id @default(cuid())
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id])
+  name         String
+  unit         String // "kg", "ton", "unit", "liter"
+  category     String?
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([companyId])
+  @@index([name])
+  @@map("items")
+}
+
+model Vehicle {
+  id           String        @id @default(cuid())
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id])
+  plateNumber  String
+  type         String?
+  capacity     Float?
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([companyId, plateNumber]) // Unique per company
+  @@map("vehicles")
+}
+
+// ============================================
+// TRANSACTION MODEL
+// ============================================
+
+model Transaction {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  date DateTime
+  type String // "sale" or "purchase"
+
+  // Relations
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  vendorId String?
+  vendor   Vendor? @relation(fields: [vendorId], references: [id])
+
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id])
+
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  // Transaction details
+  quantity       Float // Renamed from volume to match requirements
+  basePrice      Float // Price per unit (COGS)
+  sellPrice      Float // Sell price per unit (Revenue)
+  transportCost  Float @default(0)
+  unexpectedCost Float @default(0)
+  otherCost      Float @default(0)
+
+  // Calculated fields (stored for performance)
+  revenue       Float // sellPrice * quantity
+  cogs          Float // basePrice * quantity
+  totalExpenses Float // transportCost + unexpectedCost + otherCost
+  margin        Float // revenue - cogs - totalExpenses
+  marginPercent Float // (margin / revenue) * 100
+
+  category      String? // For Expenses (e.g. "Transport", "Meals") or Item Category
+  notes         String?
+  invoiceNumber String? // For Sales, e.g. "INV/2024/001"
+  deleted       Boolean @default(false)
+
+  // Journal entries for accounting
+  journalEntries JournalEntry[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([date])
+  @@index([type])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([itemId])
+  @@index([deleted])
+  @@map("transactions")
+}
+
+// ============================================
+// CHART OF ACCOUNTS (COA)
+// ============================================
+
+model ChartOfAccount {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  code           String // e.g., "4000" for Revenue
+  name           String // e.g., "Pendapatan Penjualan"
+  type           String // "revenue", "expense", "asset", "liability"
+  category       String? // "cogs", "transport", "unexpected", "other"
+  journalEntries JournalEntry[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([companyId, code]) // Unique per company
+  @@index([companyId])
+  @@index([code])
+  @@index([type])
+  @@map("chart_of_accounts")
+}
+
+// ============================================
+// JOURNAL ENTRIES (for accounting integrity)
+// ============================================
+
+model JournalEntry {
+  id            String      @id @default(cuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  accountId String
+  account   ChartOfAccount @relation(fields: [accountId], references: [id])
+
+  debit  Float    @default(0)
+  credit Float    @default(0)
+  date   DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@index([accountId])
+  @@index([date])
+  @@map("journal_entries")
+}
+
+model AIConfig {
+  id        String   @id @default(cuid())
+  companyId String   @unique
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  provider  String // 'GROQ', 'GEMINI', 'OPENAI'
+  apiKey    String // Plain text for MVP
+  model     String // e.g. 'llama3-8b-8192'
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
