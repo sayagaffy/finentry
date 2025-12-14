@@ -8,6 +8,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 const menuItems = [
     { href: '/', label: 'Overview', icon: LayoutDashboard },
     { href: '/transactions', label: 'Transaksi', icon: Receipt },
+    { href: '/logistics/delivery-orders', label: 'Surat Jalan', icon: Truck },
     { href: '/reports/income-statement', label: 'Laporan Laba Rugi', icon: FileText },
     { href: '/ai', label: 'AI Assistant', icon: Bot },
 ];
@@ -16,6 +17,8 @@ const masterDataItems = [
     { href: '/master-data/customers', label: 'Customers', icon: Users },
     { href: '/master-data/vendors', label: 'Vendors', icon: Truck },
     { href: '/master-data/items', label: 'Items', icon: Box },
+    { href: '/master-data/drivers', label: 'Drivers (Supir)', icon: Users },
+    { href: '/master-data/vehicles', label: 'Vehicles (Armada)', icon: Truck },
 ];
 
 export default function Sidebar() {
@@ -25,7 +28,9 @@ export default function Sidebar() {
     const isOwner = session?.user?.role === 'OWNER';
     const companyParam = searchParams.get('company');
 
-    // Helper to add company param to links if OWNER is in company context
+    // Helper untuk menambahkan parameter perusahaan ke link
+    // Ini penting agar saat Owner mengakses menu dalam konteks perusahaan tertentu,
+    // context tersebut (query param company) tetap terjaga.
     const addCompanyParam = (href: string) => {
         if (isOwner && companyParam) {
             return `${href}${href.includes('?') ? '&' : '?'}company=${companyParam}`;
@@ -73,7 +78,11 @@ export default function Sidebar() {
             </div>
 
             <div className="flex-1 overflow-y-auto py-6 px-3 space-y-6">
-                {/* Main Menu & Master Data - Only show if ADMIN or OWNER with company context */}
+                {/* 
+                  Menu Utama & Master Data 
+                  Hanya ditampilkan jika bukan Owner, atau jika Owner sedang melihat spesifik perusahaan (ada companyParam).
+                  Jika Owner sedang di halaman Overview Admin, menu ini disembunyikan.
+                */}
                 {(!isOwner || companyParam) && (
                     <>
                         {/* Main Menu */}

@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "Finance Tracking for Priventry",
 };
 
+// Root Layout: Layout utama aplikasi Next.js
+// Membungkus seluruh aplikasi dengan <html>, <body>, dan Provider global
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased bg-slate-50`}>
+        {/* Providers: Mengelola context global seperti Auth Session dan Toast Notifikasi */}
         <Providers>
           {children}
         </Providers>

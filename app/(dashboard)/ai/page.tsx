@@ -16,15 +16,18 @@ export default function AssistantPage() {
 
         const userMsg = query;
         setQuery('');
+        // Tambahkan pesan user ke histori chat
         setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
         setLoading(true);
 
         try {
+            // Kirim pertanyaan ke API AI
             const res: any = await apiClient('/ai/ask', {
                 method: 'POST',
-                body: { query: userMsg } // Date range optional, standard is current month
+                body: { query: userMsg } // Date range opsional, default: bulan ini
             });
 
+            // Tambahkan jawaban AI ke histori
             setChatHistory(prev => [...prev, { role: 'assistant', content: res.answer }]);
         } catch (error) {
             setChatHistory(prev => [...prev, { role: 'assistant', content: "Maaf, saya sedang mengalami gangguan sistem." }]);

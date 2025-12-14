@@ -13,26 +13,31 @@ export default function AIFloatingWidget() {
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // Effect: Scroll ke bawah otomatis saat ada pesan baru
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [chatHistory, isOpen]);
 
+    // Fungsi mengirim pertanyaan ke server AI
     async function handleSend() {
         if (!query.trim()) return;
 
         const userMsg = query;
         setQuery('');
+        // Tambahkan pesan user ke history lokal dengan role 'user'
         setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
         setLoading(true);
 
         try {
+            // Panggil API /api/ai/ask
             const res: any = await apiClient('/ai/ask', {
                 method: 'POST',
                 body: { query: userMsg }
             });
 
+            // Tambahkan jawaban assistant ke history
             setChatHistory(prev => [...prev, { role: 'assistant', content: res.answer }]);
         } catch (error) {
             setChatHistory(prev => [...prev, { role: 'assistant', content: "Maaf, saya sedang mengalami gangguan sistem." }]);

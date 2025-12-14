@@ -2,17 +2,18 @@ import NextAuth, { DefaultSession } from "next-auth"
 
 declare module "next-auth" {
     /**
-     * Extends the built-in session and user types
+     * Memperluas tipe session dan user bawaan NextAuth
+     * agar bisa menyimpan data tambahan seperti role dan companyId.
      */
     interface Session {
         user: {
-            /** The user's unique ID */
+            /** ID unik pengguna */
             id: string
-            /** The user's role (OWNER or ADMIN) */
+            /** Peran pengguna (OWNER atau ADMIN) */
             role: string
-            /** The user's company ID (null for OWNERs) */
+            /** ID perusahaan pengguna (null untuk OWNER) */
             companyId: string | null
-            /** The user's company name (null for OWNERs) */
+            /** Nama perusahaan pengguna (null untuk OWNER) */
             companyName: string | null
         } & DefaultSession["user"]
     }

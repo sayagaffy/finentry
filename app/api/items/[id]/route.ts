@@ -29,7 +29,7 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { name, unit, category } = body;
+        const { name, unit, category, defaultTaxType, requiresKtp, stockFull, stockEmpty } = body;
 
         const item = await prisma.item.update({
             where: { id },
@@ -37,6 +37,10 @@ export async function PUT(
                 name,
                 unit,
                 category,
+                defaultTaxType,
+                requiresKtp,
+                stockFull: Number(stockFull),
+                stockEmpty: Number(stockEmpty)
             },
         });
 
@@ -57,19 +61,26 @@ export async function DELETE(
     try {
         const { id } = await params;
         // Check if item has transactions
+        // Check if item has ACTIVE transactions
         const count = await prisma.transaction.count({
-            where: { itemId: id },
+            where: {
+                itemId: id,
+                deleted: false
+            },
         });
 
         if (count > 0) {
             return NextResponse.json(
-                { error: "Cannot delete item with existing transactions" },
+                { error: "Cannot delete item with active transactions. Please delete the transactions first." },
                 { status: 400 }
             );
         }
 
-        await prisma.item.delete({
+        // Soft Delete: Hanya menandai kolom 'deleted' sebagai true
+        // Data tidak benar-benar dihapus dari database agar riwayat tetap ada
+        await prisma.item.update({
             where: { id },
+            data: { deleted: true }
         });
 
         return NextResponse.json({ success: true });

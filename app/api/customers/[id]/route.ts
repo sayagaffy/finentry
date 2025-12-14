@@ -56,7 +56,8 @@ export async function DELETE(
 ) {
     try {
         const { id } = await params;
-        // Check if customer has transactions
+        // Cek: Apakah customer ini memiliki transaksi?
+        // Jika ada transaksi, tidak boleh dihapus untuk menjaga integritas data.
         const count = await prisma.transaction.count({
             where: { customerId: id },
         });

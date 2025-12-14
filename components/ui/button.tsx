@@ -2,6 +2,9 @@ import { cn } from "@/lib/utils";
 import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
 
+// Komponen Button berbasis Shadcn UI
+// Menggunakan Slot dari Radix UI untuk polymorphism (render sebagai child)
+
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     asChild?: boolean

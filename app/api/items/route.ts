@@ -9,6 +9,7 @@ export async function GET() {
 
         const where: any = {};
         if (session.user.companyId) where.companyId = session.user.companyId;
+        where.deleted = false;
 
         const items = await prisma.item.findMany({
             where,
@@ -16,6 +17,7 @@ export async function GET() {
         });
         return NextResponse.json(items);
     } catch (error) {
+        console.error("Fetch Items Error:", error);
         return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 });
     }
 }
@@ -35,6 +37,7 @@ export async function POST(request: Request) {
             });
             const existingNames = new Set(existing.map((e) => e.name.toLowerCase()));
 
+            // Mapping data body ke format database
             const validItems = body
                 .filter((i: any) => i.name && i.unit && !existingNames.has(i.name.toLowerCase()))
                 .map((i: any) => ({
@@ -42,6 +45,11 @@ export async function POST(request: Request) {
                     name: i.name,
                     unit: i.unit,
                     category: i.category || null,
+                    defaultTaxType: i.defaultTaxType || "NONE",
+                    requiresKtp: i.requiresKtp || false,
+                    // Field khusus LPG: Stok penuh vs Stok kosong (Tabung)
+                    stockFull: Number(i.stockFull) || 0,
+                    stockEmpty: Number(i.stockEmpty) || 0
                 }));
 
             if (validItems.length > 0) {
@@ -66,6 +74,12 @@ export async function POST(request: Request) {
                 name,
                 unit,
                 category,
+                // LPG Specifics
+                defaultTaxType: body.defaultTaxType || "NONE",
+                requiresKtp: body.requiresKtp || false,
+                // Inventory
+                stockFull: Number(body.stockFull) || 0,
+                stockEmpty: Number(body.stockEmpty) || 0
             },
         });
 

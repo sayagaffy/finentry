@@ -14,30 +14,30 @@ export default async function HomePage({
     const isOwner = session.user.role === 'OWNER';
     const companyParam = params.company;
 
-    // OWNER without company context → redirect to overview
+    // Logic Konteks Perusahaan:
+    // 1. Jika OWNER dan tidak ada ?company=ID -> Redirect ke Admin Overview (Pilih Perusahaan)
     if (isOwner && !companyParam) {
         redirect('/admin/overview');
     }
 
-    // Determine which company to show
+    // Tentukan perusahaan mana yang akan ditampilkan datanya
     let companyId: string | null = null;
     let companyName: string | null = null;
 
     if (isOwner && companyParam) {
-        // OWNER with company context → use the selected company
+        // OWNER dengan konteks perusahaan terpilih
         const company = await prisma.company.findUnique({
             where: { id: companyParam },
         });
 
         if (!company) {
-            // Invalid company ID → redirect to overview
             redirect('/admin/overview');
         }
 
         companyId = company.id;
         companyName = company.name;
     } else {
-        // ADMIN → use their own company
+        // ADMIN biasa -> gunakan perusahaan mereka sendiri
         companyId = session.user.companyId;
         companyName = session.user.companyName;
     }

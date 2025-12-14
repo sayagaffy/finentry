@@ -24,7 +24,8 @@ export default async function InvoicePage({ params }: { params: { id: string } }
 
     if (!transaction) notFound();
 
-    // Basic Access Control
+    // Basic Access Control: Pastikan user berhak melihat invoice ini
+    // Memeriksa companyId (kecuali OWNER yang punya akses penuh)
     if (transaction.companyId !== session.user.companyId && session.user.role !== 'OWNER') {
         return <div className="p-10 text-center text-red-500">Unauthorized Access</div>;
     }

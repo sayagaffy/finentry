@@ -43,6 +43,7 @@ export default function CompanyOverviewPage() {
         }).format(amount);
     }
 
+    // Helper untuk menentukan warna & icon berdasarkan tren pertumbuhan
     function getTrendConfig(trend: 'up' | 'down' | 'flat') {
         switch (trend) {
             case 'up':

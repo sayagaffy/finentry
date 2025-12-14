@@ -38,6 +38,13 @@ export async function GET(request: Request) {
             whereClause.customerId = customerId;
         }
 
+        const deliveryStatus = searchParams.get('deliveryStatus');
+        if (deliveryStatus === 'pending') {
+            whereClause.deliveryOrderId = null;
+        } else if (deliveryStatus === 'assigned') {
+            whereClause.deliveryOrderId = { not: null };
+        }
+
         const transactions = await prisma.transaction.findMany({
             where: whereClause,
             include: {
@@ -84,12 +91,29 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Auto-calculation
+        // Kalkulasi Otomatis (Revenue, COGS, Profit)
         const revenue = Number(quantity) * Number(sellPrice);
         const cogs = Number(quantity) * Number(basePrice);
         const totalExpenses = Number(transportCost) + Number(unexpectedCost) + Number(otherCost);
         const margin = revenue - cogs - totalExpenses;
         const marginPercent = revenue !== 0 ? (margin / revenue) * 100 : 0;
+
+        // Kalkulasi Pajak (PMK 62 / Standar)
+        let ppnAmount = 0;
+        const taxType = body.taxType || "NONE";
+
+        if (taxType === "VAT_11") {
+            // PPN Standar (11% dari Harga Jual)
+            ppnAmount = revenue * 0.11;
+        } else if (taxType === "LPG_PMK62") {
+            // PPN Agen LPG (PMK 62): Dihitung dari Margin/Selisih Harga
+            // Rumus: Margin * (1.1 / 101.1)
+            if (margin > 0) {
+                ppnAmount = margin * (1.1 / 101.1);
+            }
+        }
+        // Bulatkan PPN untuk menghindari koma desimal
+        ppnAmount = Math.round(ppnAmount);
 
         let invoiceNumber: string | null = null;
         if (type === 'sale') {
@@ -113,34 +137,74 @@ export async function POST(request: Request) {
             invoiceNumber = `INV/${year}/${monthStr}/${sequence}`;
         }
 
-        const transaction = await prisma.transaction.create({
-            data: {
-                companyId: userCompanyId,
-                date: new Date(date),
-                type,
-                customerId: customerId || null,
-                vendorId: vendorId || null,
-                itemId,
-                quantity: Number(quantity),
-                basePrice: Number(basePrice),
-                sellPrice: Number(sellPrice),
-                transportCost: Number(transportCost),
-                unexpectedCost: Number(unexpectedCost),
-                otherCost: Number(otherCost),
-                notes,
-                // Calculated fields
-                revenue,
-                cogs,
-                totalExpenses,
-                margin,
-                marginPercent,
-                invoiceNumber
-            },
-            include: {
-                customer: true,
-                vendor: true,
-                item: true,
+        const transaction = await prisma.$transaction(async (tx) => {
+            // 1. Create Transaction
+            const t = await tx.transaction.create({
+                data: {
+                    companyId: userCompanyId,
+                    date: new Date(date),
+                    type,
+                    customerId: customerId || null,
+                    vendorId: vendorId || null,
+                    itemId,
+                    quantity: Number(quantity),
+                    basePrice: Number(basePrice),
+                    sellPrice: Number(sellPrice),
+                    transportCost: Number(transportCost),
+                    unexpectedCost: Number(unexpectedCost),
+                    otherCost: Number(otherCost),
+                    notes,
+                    // Calculated fields
+                    revenue,
+                    cogs,
+                    totalExpenses,
+                    margin,
+                    marginPercent,
+                    invoiceNumber,
+                    // Taxation & LPG fields
+                    taxType: body.taxType || "NONE",
+                    ppnAmount: Number(body.ppnAmount) || 0,
+                    emptiesReturned: Number(body.emptiesReturned) || 0
+                },
+                include: {
+                    customer: true,
+                    vendor: true,
+                    item: true,
+                }
+            });
+
+            // 2. Update Inventory (Stok)
+            /*
+             * Logika Stok LPG:
+             * Penjualan (Jual ke Customer):
+             * - Stok Penuh Berkurang (Barang keluar ke customer)
+             * - Stok Kosong Bertambah (Terima tabung kosong dari customer)
+             * 
+             * Pembelian (Beli dari Vendor/Pertamina):
+             * - Stok Penuh Bertambah (Terima barang dari vendor)
+             * - Stok Kosong Berkurang (Tukar tabung kosong ke vendor)
+             */
+
+            if (type === 'sale') {
+                await tx.item.update({
+                    where: { id: itemId },
+                    data: {
+                        stockFull: { decrement: Number(quantity) },
+                        stockEmpty: { increment: Number(body.emptiesReturned || 0) }
+                    }
+                });
+            } else if (type === 'purchase') {
+                // Pembelian Refill: Kita tukar Kosong, dapat Penuh.
+                await tx.item.update({
+                    where: { id: itemId },
+                    data: {
+                        stockFull: { increment: Number(quantity) },
+                        stockEmpty: { decrement: Number(quantity) } // Asumsi tukar guling 1:1
+                    }
+                });
             }
+
+            return t;
         });
 
         return NextResponse.json(transaction, { status: 201 });

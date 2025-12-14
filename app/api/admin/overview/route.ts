@@ -48,20 +48,20 @@ export async function GET() {
                     },
                 });
 
-                // Calculate this month metrics
+                // Menghitung metrik bulan ini
                 const thisMonthRevenue = thisMonthTransactions.reduce((sum, t) => sum + t.revenue, 0);
                 const thisMonthProfit = thisMonthTransactions.reduce((sum, t) => sum + t.margin, 0);
                 const thisMonthMargin = thisMonthRevenue > 0 ? (thisMonthProfit / thisMonthRevenue) * 100 : 0;
 
-                // Calculate last month revenue for growth comparison
+                // Menghitung revenue bulan lalu untuk perbandingan pertumbuhan (growth)
                 const lastMonthRevenue = lastMonthTransactions.reduce((sum, t) => sum + t.revenue, 0);
 
-                // Calculate growth percentage
+                // Hitung persentase pertumbuhan
                 let growth = 0;
                 if (lastMonthRevenue > 0) {
                     growth = ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
                 } else if (thisMonthRevenue > 0) {
-                    growth = 100; // First month with revenue
+                    growth = 100; // Bulan pertama ada revenue dianggap growth 100%
                 }
 
                 // Determine trend

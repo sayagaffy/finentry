@@ -2,6 +2,13 @@
 
 import { AlertTriangle, X } from 'lucide-react';
 
+/**
+ * Properti untuk komponen ConfirmDialog.
+ * @property isOpen - Menentukan apakah dialog terlihat
+ * @property onClose - Fungsi yang dipanggil saat dialog ditutup/dibatalkan
+ * @property onConfirm - Fungsi yang dipanggil saat user menekan konfirmasi
+ * @property isDestructive - Jika true, tombol konfirmasi akan berwarna merah (untuk aksi berbahaya seperti hapus)
+ */
 interface ConfirmDialogProps {
     isOpen: boolean;
     onClose: () => void;
@@ -56,8 +63,8 @@ export default function ConfirmDialog({
                             onClose();
                         }}
                         className={`px-4 py-2 rounded-lg text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-offset-2 ${isDestructive
-                                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                                : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
+                            ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                            : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
                             }`}
                     >
                         {confirmText}

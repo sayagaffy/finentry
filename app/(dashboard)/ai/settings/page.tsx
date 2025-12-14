@@ -39,6 +39,7 @@ export default function AISettingsPage() {
         e.preventDefault();
         setSaving(true);
         try {
+            // Simpan konfigurasi ke database via API
             await apiClient('/ai/config', { method: 'POST', body: config });
             toast.success('AI Configuration saved successfully!');
         } catch (error: any) {

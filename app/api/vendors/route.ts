@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
         const body = await request.json();
 
-        // Handle Bulk Create
+        // Handle Bulk Create (Sama seperti Customer, untuk Import Excel)
         if (Array.isArray(body)) {
             const existing = await prisma.vendor.findMany({
                 where: { companyId: session.user.companyId },
@@ -70,7 +70,8 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json(vendor, { status: 201 });
-    } catch (error) {
-        return NextResponse.json({ error: 'Failed to create vendor' }, { status: 500 });
+    } catch (error: any) {
+        console.error("Error creating vendor:", error);
+        return NextResponse.json({ error: error.message || 'Failed to create vendor' }, { status: 500 });
     }
 }

@@ -17,10 +17,11 @@ export default function CompaniesPage() {
     async function loadData() {
         setLoading(true);
         try {
+            // Fetch daftar perusahaan (Hanya untuk OWNER)
             const res = await apiClient<any[]>('/admin/companies');
             setCompanies(res);
         } catch (e) {
-            // Likely 403 if not owner, handled by API client usually throwing
+            // Error 403 jika bukan owner
             console.error(e);
         }
         finally { setLoading(false); }

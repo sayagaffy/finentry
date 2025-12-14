@@ -15,9 +15,11 @@ export default function CustomersPage() {
     const [showImport, setShowImport] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ name: '', contact: '', address: '' });
+    const [formData, setFormData] = useState({ name: '', contact: '', address: '', identityNumber: '' });
 
     useEffect(() => { loadData(); }, []);
+
+    // ... (loadData omitted) ...
 
     async function loadData() {
         setLoading(true);
@@ -31,6 +33,7 @@ export default function CustomersPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         try {
+            // Tentukan method: POST (Buat Baru) atau PUT (Update)
             const method = editingId ? 'PUT' : 'POST';
             const url = editingId ? `/customers/${editingId}` : '/customers';
             await apiClient(url, { method, body: formData });
@@ -46,7 +49,8 @@ export default function CustomersPage() {
         setFormData({
             name: customer.name,
             contact: customer.contact || '',
-            address: customer.address || ''
+            address: customer.address || '',
+            identityNumber: customer.identityNumber || ''
         });
         setShowForm(true);
     }
@@ -71,7 +75,7 @@ export default function CustomersPage() {
     function closeForm() {
         setShowForm(false);
         setEditingId(null);
-        setFormData({ name: '', contact: '', address: '' });
+        setFormData({ name: '', contact: '', address: '', identityNumber: '' });
     }
 
     return (
@@ -125,6 +129,7 @@ export default function CustomersPage() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input placeholder="Name" className="w-full border p-2 rounded" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
                             <input placeholder="Contact (Phone/Email)" className="w-full border p-2 rounded" value={formData.contact} onChange={e => setFormData({ ...formData, contact: e.target.value })} />
+                            <input placeholder="NIK / KTP (Required for Gas 3kg)" className="w-full border p-2 rounded" value={formData.identityNumber} onChange={e => setFormData({ ...formData, identityNumber: e.target.value })} />
                             <textarea placeholder="Address" className="w-full border p-2 rounded" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={closeForm} className="px-4 py-2 text-slate-500">Cancel</button>

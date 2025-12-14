@@ -15,7 +15,11 @@ export default function ItemsPage() {
     const [showImport, setShowImport] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ name: '', unit: 'kg', category: '' });
+    const [formData, setFormData] = useState({
+        name: '', unit: 'kg', category: '',
+        defaultTaxType: 'NONE', requiresKtp: false,
+        stockFull: 0, stockEmpty: 0
+    });
 
     useEffect(() => { loadData(); }, []);
 
@@ -46,10 +50,16 @@ export default function ItemsPage() {
         setFormData({
             name: item.name,
             unit: item.unit,
-            category: item.category || ''
+            category: item.category || '',
+            defaultTaxType: item.defaultTaxType || 'NONE',
+            requiresKtp: item.requiresKtp || false,
+            stockFull: item.stockFull || 0,
+            stockEmpty: item.stockEmpty || 0
         });
         setShowForm(true);
     }
+
+    // ... (handleDelete and confirmDelete omitted for brevity if unchanged) ... 
 
     function handleDelete(id: string) {
         setDeleteId(id);
@@ -71,7 +81,11 @@ export default function ItemsPage() {
     function closeForm() {
         setShowForm(false);
         setEditingId(null);
-        setFormData({ name: '', unit: 'kg', category: '' });
+        setFormData({
+            name: '', unit: 'kg', category: '',
+            defaultTaxType: 'NONE', requiresKtp: false,
+            stockFull: 0, stockEmpty: 0
+        });
     }
 
     return (
@@ -96,6 +110,7 @@ export default function ItemsPage() {
                             <th className="px-4 py-3">Name</th>
                             <th className="px-4 py-3">Unit</th>
                             <th className="px-4 py-3">Category</th>
+                            <th className="px-4 py-3 text-right">Stock (Isi | Kosong)</th>
                             <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -106,6 +121,11 @@ export default function ItemsPage() {
                                     <td className="px-4 py-2 font-medium">{d.name}</td>
                                     <td className="px-4 py-2 text-slate-500">{d.unit}</td>
                                     <td className="px-4 py-2">{d.category || '-'}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-xs">
+                                        <span className="text-green-600 font-bold">{d.stockFull}</span>
+                                        <span className="text-slate-300 mx-2">|</span>
+                                        <span className="text-orange-600 font-bold">{d.stockEmpty}</span>
+                                    </td>
                                     <td className="px-4 py-2">
                                         <div className="flex justify-end gap-2">
                                             <button onClick={() => handleEdit(d)} className="text-blue-600 hover:text-blue-800 font-medium">Edit</button>
@@ -131,6 +151,33 @@ export default function ItemsPage() {
                                 <option value="liter">Liter</option>
                             </select>
                             <input placeholder="Category (e.g. Sembako)" className="w-full border p-2 rounded" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+
+                            {/* LPG Specifics */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Default Tax Type</label>
+                                <select className="w-full border p-2 rounded" value={formData.defaultTaxType} onChange={e => setFormData({ ...formData, defaultTaxType: e.target.value })}>
+                                    <option value="NONE">None / Bebas Pajak</option>
+                                    <option value="VAT_11">PPN Standard (11%)</option>
+                                    <option value="LPG_PMK62">PPN Agen LPG (PMK 62)</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input type="checkbox" id="requiresKtp" checked={formData.requiresKtp} onChange={e => setFormData({ ...formData, requiresKtp: e.target.checked })} />
+                                <label htmlFor="requiresKtp" className="text-sm">Requires KTP (Subsidized)</label>
+                            </div>
+
+                            {/* Inventory Initial Stock (Stok Awal) */}
+                            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase">Stock Full (Isi)</label>
+                                    <input type="number" className="w-full border p-2 rounded text-right" value={formData.stockFull} onChange={e => setFormData({ ...formData, stockFull: Number(e.target.value) })} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase">Stock Empty (Kosong)</label>
+                                    <input type="number" className="w-full border p-2 rounded text-right" value={formData.stockEmpty} onChange={e => setFormData({ ...formData, stockEmpty: Number(e.target.value) })} />
+                                </div>
+                            </div>
+
                             <div className="flex justify-end gap-2 mt-4">
                                 <button type="button" onClick={closeForm} className="px-4 py-2 text-slate-500">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>

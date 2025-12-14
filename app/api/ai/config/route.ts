@@ -11,10 +11,10 @@ export async function GET() {
 
     let companyId = user.companyId;
 
-    // If Owner has no context, fetch the first company they have access to (or just the first one in DB for now)
+    // Jika Owner tidak punya konteks perusahaan, ambil perusahaan pertama (default)
     if (!companyId && user.role === 'OWNER') {
         const firstCompany = await prisma.company.findFirst();
-        companyId = firstCompany?.id;
+        companyId = firstCompany?.id ?? null;
     }
 
     if (!companyId) return NextResponse.json({ error: 'No Company Found' }, { status: 404 });

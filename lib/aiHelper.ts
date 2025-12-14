@@ -6,6 +6,10 @@ interface AIResponse {
     answer: string;
 }
 
+/**
+ * Interface untuk parameter yang dibutuhkan saat memanggil AI.
+ * Mendukung beberapa provider: GROQ, GEMINI, OPENAI.
+ */
 export interface AICompletionParams {
     provider: string; // 'GROQ' | 'GEMINI' | 'OPENAI'
     apiKey: string;
@@ -14,10 +18,15 @@ export interface AICompletionParams {
     userPrompt: string;
 }
 
+/**
+ * Fungsi utama untuk menghasilkan respons dari AI.
+ * Fungsi ini memilih logika yang sesuai berdasarkan provider yang dipilih (Gemini, Groq, atau OpenAI).
+ */
 export async function generateAIResponse(params: AICompletionParams): Promise<AIResponse> {
     const { provider, apiKey, model, systemPrompt, userPrompt } = params;
 
     try {
+        // Logika khusus untuk Google Gemini
         if (provider === 'GEMINI') {
             const genAI = new GoogleGenerativeAI(apiKey);
             const geminiModel = genAI.getGenerativeModel({ model: model || 'gemini-2.5-flash' });
@@ -30,6 +39,7 @@ export async function generateAIResponse(params: AICompletionParams): Promise<AI
             return { answer: response.text() };
         }
 
+        // Logika untuk API yang kompatibel dengan OpenAI (termasuk Groq)
         if (provider === 'GROQ' || provider === 'OPENAI') {
             const baseURL = provider === 'GROQ'
                 ? 'https://api.groq.com/openai/v1'

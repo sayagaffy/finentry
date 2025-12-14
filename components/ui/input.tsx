@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils"
 import * as React from "react"
 
+// Komponen Input berbasis Shadcn UI
 export interface InputProps
     extends React.InputHTMLAttributes<HTMLInputElement> { }
 

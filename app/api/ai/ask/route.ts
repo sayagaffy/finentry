@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
         if (!userCompanyId && !isOwner) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        // Fallback or Global Context for Owner: Use First Company
+        // Fallback untuk OWNER jika tidak ada companyId spesifik: Gunakan Perusahaan Pertama
         if (!userCompanyId && isOwner) {
             const firstCompany = await prisma.company.findFirst();
             userCompanyId = firstCompany?.id || null;
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         // 2. Fetch Data (Single Company or Multi-Company for Owner)
         let contextData: any = {};
 
-        // If Owner and NO specific company selected (Global View), fetch comparison data
+        // Jika Owner dan TIDAK memilih perusahaan tertentu (Global View), ambil data perbandingan semua perusahaan
         if (isOwner && !session.user.companyId) {
             const allCompanies = await prisma.company.findMany({
                 include: {
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
                 }
             });
 
+            // Hitung ringkasan performa tiap perusahaan
             const companyComparisons = allCompanies.map(c => {
                 const revenue = c.transactions.reduce((sum, t) => sum + t.revenue, 0);
                 const expenses = c.transactions.reduce((sum, t) => sum + t.totalExpenses, 0);
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
             };
 
         } else {
-            // Single Company Flow (Existing Logic)
+            // Flow untuk Single Company (Admin atau Owner di dalam perusahaan)
             const whereClause: any = {
                 date: { gte: startDate, lte: endDate },
                 deleted: false,
@@ -93,20 +94,20 @@ export async function POST(request: Request) {
             };
 
             const [stats, expenseBreakdown, topCustomers] = await Promise.all([
-                // Stats
+                // Aggregate Statistik Utama
                 prisma.transaction.aggregate({
                     where: whereClause,
                     _sum: { revenue: true, cogs: true, totalExpenses: true, margin: true },
                     _count: true
                 }),
-                // Expense Breakdown
+                // Breakdown Pengeluaran per Kategori
                 (prisma as any).transaction.groupBy({
                     by: ['category'],
                     where: { ...whereClause, type: 'expense' },
                     _sum: { totalExpenses: true },
                     orderBy: { _sum: { totalExpenses: 'desc' } }
                 }),
-                // Top Customers (Enriched)
+                // Top 5 Customer berdasarkan Revenue
                 (prisma as any).transaction.groupBy({
                     by: ['customerId'],
                     where: { ...whereClause, type: 'sale' },
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
 
             contextData = {
                 scope: "SINGLE_COMPANY",
-                company: session.user.name, // Or fetch company name if needed
+                company: session.user.name,
                 period: { start: startDate.toISOString().split('T')[0], end: endDate.toISOString().split('T')[0] },
                 financials: {
                     revenue: stats._sum.revenue || 0,

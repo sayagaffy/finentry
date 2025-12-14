@@ -8,9 +8,10 @@ interface ImportModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    resource: 'customers' | 'vendors' | 'items' | 'transactions';
+    resource: 'customers' | 'vendors' | 'items' | 'transactions'; // Jenis data yang akan diimpor
 }
 
+// Template data untuk setiap jenis resource agar user tahu format excel yang benar
 const TEMPLATES = {
     customers: [{ name: 'John Doe', contact: '08123456789', address: 'Jakarta' }],
     vendors: [{ name: 'PT Vendor Jaya', type: 'vendor', contact: 'sales@vendor.com' }],
@@ -39,6 +40,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess, resource }: Im
 
     if (!isOpen) return null;
 
+    // Menangani perubahan file input (saat user memilih file Excel)
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (!selectedFile) return;
@@ -47,14 +49,15 @@ export default function ImportModal({ isOpen, onClose, onSuccess, resource }: Im
         setError('');
         setStats(null);
 
+        // Membaca file menggunakan FileReader dan library XLSX
         const reader = new FileReader();
         reader.onload = (evt) => {
             try {
                 const bstr = evt.target?.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
+                const wsname = wb.SheetNames[0]; // Ambil sheet pertama
                 const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws);
+                const data = XLSX.utils.sheet_to_json(ws); // Konversi ke JSON
                 setPreviewData(data);
             } catch (err) {
                 console.error(err);
@@ -71,6 +74,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess, resource }: Im
         XLSX.writeFile(wb, `${resource}_template.xlsx`);
     };
 
+    // Mengirim data JSON yang sudah diparsing ke API backend
     const handleImport = async () => {
         if (!previewData.length) return;
         setLoading(true);
@@ -81,7 +85,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess, resource }: Im
             const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(previewData), // Note: My transactions/import route also expects JSON body if not formData? Wait.
+                body: JSON.stringify(previewData),
             });
 
             if (!res.ok) {
@@ -90,9 +94,11 @@ export default function ImportModal({ isOpen, onClose, onSuccess, resource }: Im
             }
 
             const result = await res.json();
-            setStats(result);
+            setStats(result); // Simpan statistik hasil import (sukses/skip)
             setFile(null);
             setPreviewData([]);
+
+            // Tutup modal otomatis setelah 2 detik sukses
             setTimeout(() => {
                 onClose();
                 onSuccess();

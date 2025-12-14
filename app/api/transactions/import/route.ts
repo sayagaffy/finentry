@@ -17,7 +17,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No data to import' }, { status: 400 });
         }
 
-        // Preheat Caches for Lookups (to avoid N+1 queries)
+        // Preheat Caches: Ambil semua item, customer, vendor sekaligus untuk lookup cepat
+        // Menghindari query berulang (N+1 problem) di dalam loop
         const [items, customers, vendors] = await Promise.all([
             prisma.item.findMany({ where: { companyId: userCompanyId } }),
             prisma.customer.findMany({ where: { companyId: userCompanyId } }),
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
                 continue;
             }
 
-            // Normalization
+            // Normalisasi Tipe Transaksi: Deteksi kata 'jual'/'sale'
             const type = typeRaw.toString().toLowerCase().includes('jual') || typeRaw.toString().toLowerCase() === 'sale' ? 'sale' : 'purchase';
 
             // Lookups

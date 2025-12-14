@@ -13,9 +13,9 @@ interface Transaction {
     id: string;
     date: string;
     type: 'sale' | 'purchase';
-    customer?: { name: string };
+    customer?: { name: string; identityNumber?: string };
     vendor?: { name: string };
-    item: { name: string; unit: string };
+    item: { name: string; unit: string; requiresKtp?: boolean };
     quantity: number;
     sellPrice: number;
     revenue: number;
@@ -23,6 +23,9 @@ interface Transaction {
     margin: number;
     marginPercent: number;
     invoiceNumber?: string | null;
+    taxType?: string;
+    ppnAmount?: number;
+    emptiesReturned?: number;
 }
 
 interface MasterData {
@@ -46,7 +49,7 @@ export default function TransactionsPage() {
 
     const [showImport, setShowImport] = useState(false);
 
-    // Form State
+    // State Form: Digunakan untuk Create (Baru) dan Edit
     const initialForm = {
         date: new Date().toISOString().split('T')[0],
         type: 'sale',
@@ -59,7 +62,9 @@ export default function TransactionsPage() {
         transportCost: 0,
         unexpectedCost: 0,
         otherCost: 0,
-        notes: ''
+        notes: '',
+        taxType: 'NONE',
+        emptiesReturned: 0
     };
     const [formData, setFormData] = useState(initialForm);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -72,6 +77,7 @@ export default function TransactionsPage() {
     async function fetchData() {
         setLoading(true);
         try {
+            // Build Query Params untuk Filter
             const query = new URLSearchParams({
                 startDate: filters.startDate,
                 endDate: filters.endDate,
@@ -116,7 +122,9 @@ export default function TransactionsPage() {
             transportCost: t.transportCost,
             unexpectedCost: t.unexpectedCost,
             otherCost: t.otherCost,
-            notes: t.notes || ''
+            notes: t.notes || '',
+            taxType: t.taxType || 'NONE',
+            emptiesReturned: t.emptiesReturned || 0
         });
         setShowForm(true);
     }
@@ -239,6 +247,7 @@ export default function TransactionsPage() {
                                 <th className="px-4 py-3 text-right">Revenue</th>
                                 <th className="px-4 py-3 text-right">Expenses</th>
                                 <th className="px-4 py-3 text-right">Margin</th>
+                                <th className="px-4 py-3 text-center">Pajak (PPN)</th>
                                 <th className="px-4 py-3 text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -259,15 +268,33 @@ export default function TransactionsPage() {
                                         <td className="px-4 py-3 font-mono text-xs">{t.invoiceNumber || '-'}</td>
                                         <td className="px-4 py-3">{t.customer?.name || t.vendor?.name || '-'}</td>
                                         <td className="px-4 py-3">{t.item.name}</td>
-                                        <td className="px-4 py-3 text-right">{t.quantity} {t.item.unit}</td>
+                                        <td className="px-4 py-3 text-right">
+                                            {t.quantity} {t.item.unit}
+                                            {t.emptiesReturned ? <div className="text-xs text-orange-600 font-mono">Ret: {t.emptiesReturned}</div> : null}
+                                        </td>
                                         <td className="px-4 py-3 text-right font-medium">{formatCurrency(t.revenue)}</td>
                                         <td className="px-4 py-3 text-right text-red-600">({formatCurrency(t.totalExpenses)})</td>
                                         <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(t.margin)} <span className="text-xs font-normal text-slate-500">({t.marginPercent.toFixed(1)}%)</span></td>
+                                        <td className="px-4 py-3 text-center">
+                                            {t.taxType === 'NONE' ? <span className="text-xs text-slate-400">-</span> :
+                                                <div className="text-xs">
+                                                    <div className="font-bold">{t.taxType === 'LPG_PMK62' ? 'PMK62' : 'PPN'}</div>
+                                                    <div className="text-slate-600">{formatCurrency(t.ppnAmount || 0)}</div>
+                                                </div>
+                                            }
+                                        </td>
                                         <td className="px-4 py-3 text-center flex justify-center gap-2">
                                             {t.type === 'sale' && (
-                                                <button onClick={() => window.open(`/transactions/${t.id}/invoice`, '_blank')} title="Cetak Invoice" className="text-slate-600 hover:text-slate-800">
-                                                    <Printer className="w-4 h-4" />
-                                                </button>
+                                                <>
+                                                    <button onClick={() => window.open(`/transactions/${t.id}/invoice`, '_blank')} title="Cetak Invoice Standard" className="text-slate-600 hover:text-slate-800">
+                                                        <Printer className="w-4 h-4" />
+                                                    </button>
+                                                    {t.taxType !== 'NONE' && (
+                                                        <button onClick={() => window.open(`/transactions/${t.id}/tax-invoice`, '_blank')} title="Cetak Faktur Pajak (PMK 62)" className="text-orange-600 hover:text-orange-800 font-bold text-xs border border-orange-200 bg-orange-50 px-1 rounded">
+                                                            FP
+                                                        </button>
+                                                    )}
+                                                </>
                                             )}
                                             <button onClick={() => handleEdit(t)} className="text-blue-600 hover:text-blue-800 text-xs font-semibold">Edit</button>
                                             <button onClick={() => handleDelete(t.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Hapus</button>
@@ -323,10 +350,27 @@ export default function TransactionsPage() {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Item Barang</label>
-                                <select className="w-full border rounded p-2" value={formData.itemId} onChange={e => setFormData({ ...formData, itemId: e.target.value })} required>
+                                <select className="w-full border rounded p-2" value={formData.itemId} onChange={e => {
+                                    const selectedItem = masterData.items.find(i => i.id === e.target.value);
+                                    setFormData({
+                                        ...formData,
+                                        itemId: e.target.value,
+                                        taxType: selectedItem?.defaultTaxType || 'NONE'
+                                    });
+                                }} required>
                                     <option value="">Pilih Item...</option>
                                     {masterData.items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
                                 </select>
+                                {formData.itemId && (() => {
+                                    // Validasi KTP untuk Barang Subsidi (Gas 3kg)
+                                    // Jika item requiresKtp tapi customer tidak ada data KTP, tampilkan warning
+                                    const item = masterData.items.find(i => i.id === formData.itemId);
+                                    const customer = masterData.customers.find(c => c.id === formData.customerId);
+                                    if (item?.requiresKtp && customer && !customer.identityNumber) {
+                                        return <p className="text-xs text-red-500 mt-1 font-semibold">⚠️ Warning: Item subsidi ini memerlukan KTP Customer (Data Customer belum lengkap)</p>;
+                                    }
+                                    return null;
+                                })()}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -335,14 +379,36 @@ export default function TransactionsPage() {
                                     <input type="number" className="w-full border rounded p-2" value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })} required min="1" />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium mb-1">Tabung Kembali (Kosong)</label>
+                                    <input type="number" className="w-full border rounded p-2" value={formData.emptiesReturned} onChange={e => setFormData({ ...formData, emptiesReturned: Number(e.target.value) })} min="0" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
                                     <label className="block text-sm font-medium mb-1">Harga Dasar (COGS)</label>
                                     <input type="number" className="w-full border rounded p-2" value={formData.basePrice} onChange={e => setFormData({ ...formData, basePrice: Number(e.target.value) })} required min="0" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Harga Jual (Revenue)</label>
+                                    <input type="number" className="w-full border rounded p-2" value={formData.sellPrice} onChange={e => setFormData({ ...formData, sellPrice: Number(e.target.value) })} required min="0" />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1">Harga Jual (Revenue)</label>
-                                <input type="number" className="w-full border rounded p-2" value={formData.sellPrice} onChange={e => setFormData({ ...formData, sellPrice: Number(e.target.value) })} required min="0" />
+                                <label className="block text-sm font-medium mb-1">Jenis Pajak</label>
+                                <select className="w-full border rounded p-2" value={formData.taxType} onChange={e => setFormData({ ...formData, taxType: e.target.value })}>
+                                    <option value="NONE">Non-PKP / Bebas Pajak</option>
+                                    <option value="VAT_11">PPN Standard (11%)</option>
+                                    <option value="LPG_PMK62">PPN Agen LPG (PMK 62 - Margin)</option>
+                                </select>
+                                {formData.taxType !== 'NONE' && (
+                                    <p className="text-xs text-slate-500 mt-1">Est. PPN: {
+                                        formData.taxType === 'VAT_11'
+                                            ? (formData.sellPrice * formData.quantity * 0.11).toLocaleString('id-ID')
+                                            : Math.max(0, (formData.sellPrice - formData.basePrice - formData.transportCost - formData.unexpectedCost - formData.otherCost) * formData.quantity * (1.1 / 101.1)).toLocaleString('id-ID')
+                                    }</p>
+                                )}
                             </div>
 
                             <div className="pt-4 border-t">

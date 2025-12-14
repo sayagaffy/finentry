@@ -2,14 +2,16 @@ import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+// GET: Mengambil daftar customer
 export async function GET() {
     try {
         const session = await auth();
         if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const where: any = {};
+        // Jika user terikat perusahaan, filter berdasarkan companyId
         if (session.user.companyId) where.companyId = session.user.companyId;
-        // If Owner (no companyId), fetch all.
+        // Jika Owner (tanpa companyId), ambil semua (atau logic lain sesuai kebutuhan)
 
         const customers = await prisma.customer.findMany({
             where,
@@ -28,14 +30,17 @@ export async function POST(request: Request) {
 
         const body = await request.json();
 
-        // Handle Bulk Create
+        // Handle Bulk Create (Banyak Data Sekaligus)
+        // Biasanya dipanggil dari fitur Import Excel
         if (Array.isArray(body)) {
+            // Cek nama customer yang sudah ada agar tidak duplikat
             const existing = await prisma.customer.findMany({
                 where: { companyId: session.user.companyId },
                 select: { name: true },
             });
             const existingNames = new Set(existing.map((e) => e.name.toLowerCase()));
 
+            // Filter hanya customer baru (belum ada namanya di database)
             const validCustomers = body
                 .filter((c: any) => c.name && !existingNames.has(c.name.toLowerCase()))
                 .map((c: any) => ({
@@ -43,6 +48,7 @@ export async function POST(request: Request) {
                     name: c.name,
                     contact: c.contact || null,
                     address: c.address || null,
+                    identityNumber: c.identityNumber || null,
                 }));
 
             if (validCustomers.length > 0) {
@@ -54,7 +60,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ count: 0, skipped: body.length }, { status: 201 });
         }
 
-        // Handle Single Create
+        // Handle Single Create (Satu Data)
         const { name, contact, address } = body;
 
         if (!name) {
@@ -67,6 +73,7 @@ export async function POST(request: Request) {
                 name,
                 contact,
                 address,
+                identityNumber: body.identityNumber || null,
             },
         });
 

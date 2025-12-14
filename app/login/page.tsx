@@ -11,22 +11,25 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    // Handle Login Submit
     async function handleLogin(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
         setError('');
 
         try {
+            // Panggil NextAuth signIn dengan provider 'credentials'
             const res = await signIn('credentials', {
                 email,
                 password,
-                redirect: false,
+                redirect: false, // Handle redirect manual agar lebih smooth
             });
 
             if (res?.error) {
                 setError('Invalid email or password');
                 setLoading(false);
             } else {
+                // Login sukses, arahkan ke dashboard dan refresh
                 router.push('/');
                 router.refresh();
             }

@@ -62,6 +62,19 @@ export async function PUT(
         const margin = revenue - cogs - totalExpenses;
         const marginPercent = revenue !== 0 ? (margin / revenue) * 100 : 0;
 
+        // Taxation Refinement (PMK 62 / Standard)
+        let ppnAmount = 0;
+        const taxType = body.taxType || existing.taxType || "NONE";
+
+        if (taxType === "VAT_11") {
+            ppnAmount = revenue * 0.11;
+        } else if (taxType === "LPG_PMK62") {
+            if (margin > 0) {
+                ppnAmount = margin * (1.1 / 101.1);
+            }
+        }
+        ppnAmount = Math.round(ppnAmount);
+
         const updated = await prisma.transaction.update({
             where: { id },
             data: {
@@ -81,14 +94,61 @@ export async function PUT(
                 cogs,
                 totalExpenses,
                 margin,
-                marginPercent
+                marginPercent,
+                // Taxation & LPG fields
+                taxType: body.taxType || undefined,
+                ppnAmount: ppnAmount,
+                emptiesReturned: Number(body.emptiesReturned) || 0
             },
             include: { customer: true, vendor: true, item: true }
         });
+
+        // Update Stock
+        await updateStockOnEdit(existing, updated);
 
         return NextResponse.json(updated);
     } catch (error) {
         console.error("Update Transaction Error:", error);
         return NextResponse.json({ error: 'Failed to update transaction', details: String(error) }, { status: 500 });
+    }
+}
+
+async function updateStockOnEdit(oldTx: any, newTx: any) {
+    // 1. Revert Old (Balikkan efek transaksi lama)
+    if (oldTx.type === 'sale') {
+        await prisma.item.update({
+            where: { id: oldTx.itemId },
+            data: {
+                stockFull: { increment: oldTx.quantity }, // Kembalikan stok penuh
+                stockEmpty: { decrement: oldTx.emptiesReturned || 0 } // Kembalikan stok kosong
+            }
+        });
+    } else if (oldTx.type === 'purchase') {
+        await prisma.item.update({
+            where: { id: oldTx.itemId },
+            data: {
+                stockFull: { decrement: oldTx.quantity },
+                stockEmpty: { increment: oldTx.quantity }
+            }
+        });
+    }
+
+    // 2. Apply New (Terapkan efek transaksi baru)
+    if (newTx.type === 'sale') {
+        await prisma.item.update({
+            where: { id: newTx.itemId },
+            data: {
+                stockFull: { decrement: newTx.quantity },
+                stockEmpty: { increment: newTx.emptiesReturned || 0 }
+            }
+        });
+    } else if (newTx.type === 'purchase') {
+        await prisma.item.update({
+            where: { id: newTx.itemId },
+            data: {
+                stockFull: { increment: newTx.quantity },
+                stockEmpty: { decrement: newTx.quantity }
+            }
+        });
     }
 }

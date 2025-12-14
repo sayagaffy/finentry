@@ -22,6 +22,7 @@ export default function ReportsPage() {
     async function fetchReport() {
         setLoading(true);
         try {
+            // Fetch data laporan laba rugi dari API
             const report = await apiClient(`/reports/income-statement?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`);
             setData(report);
         } catch (error) {

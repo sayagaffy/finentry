@@ -14,13 +14,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
                 const user = await prisma.user.findUnique({
                     where: { email: String(credentials.email) },
-                    include: { company: true }, // Include company relation
+                    include: { company: true }, // Sertakan relasi perusahaan
                 });
 
                 if (!user) return null;
 
-                // In a real app, use bcrypt.compare(credentials.password, user.password)
-                // For this MVP seed, we used plain text "password"
+                // Pada aplikasi nyata, gunakan bcrypt.compare(credentials.password, user.password)
+                // Untuk project ini kita gunakan plain text sementara
                 if (credentials.password !== user.password) return null;
 
                 return {
@@ -29,26 +29,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     email: user.email,
                     role: user.role,
                     companyId: user.companyId,
-                    companyName: user.company?.name || null, // Add company name
+                    companyName: user.company?.name || null, // Tambahkan nama perusahaan ke sesi
                 };
             },
         }),
     ],
     callbacks: {
+        // Callback JWT dipanggil saat token dibuat atau diperbarui
         async jwt({ token, user }: any) {
             if (user) {
                 token.role = user.role;
                 token.companyId = user.companyId;
-                token.companyName = user.companyName; // Add company name to token
+                token.companyName = user.companyName; // Tambahkan nama perusahaan ke token
             }
             return token;
         },
+        // Callback session dipanggil saat data sesi diambil di client/server
         async session({ session, token }: any) {
             if (token && session.user) {
                 session.user.role = token.role;
                 session.user.companyId = token.companyId;
-                session.user.companyName = token.companyName; // Add company name to session
-                session.user.id = token.sub; // Ensure ID is passed
+                session.user.companyName = token.companyName; // Tambahkan nama perusahaan ke sesi
+                session.user.id = token.sub; // Pastikan ID tersedia di sesi
             }
             return session;
         },

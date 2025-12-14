@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         // Owner fetches ALL if no companyId filter added (Global view). Admin fetches only their company.
         if (userCompanyId) whereClause.companyId = userCompanyId;
 
+        // Agregasi Data: Menjumlahkan revenue, HPP (COGS), dan biaya-biaya
         const aggregations = await prisma.transaction.aggregate({
             where: whereClause,
             _sum: {
